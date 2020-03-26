@@ -110,23 +110,38 @@ def precision_at_k(y_tst,probs_pred,k):
 	return p_at_k
 
 
-def save_metrics(emb_trn,y_trn,emb_val,y_val,num_neighbours,filename,log=True):
-	nbrs = NearestNeighbors(n_neighbors=num_neighbours, algorithm='ball_tree').fit(emb_trn)
-	nbr_distances, nbr_indices = nbrs.kneighbors(emb_val)
+def compute_mlr_metrics(nbrs,num_neighbours,y_trn,emb_tst,y_tst,prefix):
+	nbr_distances, nbr_indices = nbrs.kneighbors(emb_tst)
 	y_nbr=y_trn[nbr_indices,:]
-	assert(y_nbr.shape==(emb_val.shape[0],num_neighbours,y_val.shape[1]))
-	y_pred_val=np.mean(y_nbr,axis=1)
-	metrics_df=pd.DataFrame()
-	metrics_df.loc[0,"p@1"]=precision_at_k(y_val,y_pred_val,1)
-	metrics_df.loc[0,"p@3"]=precision_at_k(y_val,y_pred_val,3)
-	metrics_df.loc[0,"p@5"]=precision_at_k(y_val,y_pred_val,5)
-	metrics_df.loc[0,"ranking_loss"]=skmet.label_ranking_loss(y_val,y_pred_val)
-	metrics_df.loc[0,"coverage_error"]=skmet.coverage_error(y_val,y_pred_val)
-	metrics_df.loc[0,"avg_prec_score"]=skmet.label_ranking_average_precision_score(y_val,y_pred_val)
-	if log:
-		print(metrics_df)
-	if filename:
-		with open(filename,"a") as fi:
-			metrics_df.to_csv(fi)
+	assert(y_nbr.shape==(emb_tst.shape[0],num_neighbours,y_tst.shape[1]))
+	y_pred=np.mean(y_nbr,axis=1)
+	metrics_df=pd.DataFrame(index=[0])
+	metrics_df.loc[0,prefix+"p@1"]=precision_at_k(y_tst,y_pred,1)
+	metrics_df.loc[0,prefix+"p@3"]=precision_at_k(y_tst,y_pred,3)
+	metrics_df.loc[0,prefix+"p@5"]=precision_at_k(y_tst,y_pred,5)
+	metrics_df.loc[0,prefix+"ranking_loss"]=skmet.label_ranking_loss(y_tst,y_pred)
+	metrics_df.loc[0,prefix+"coverage_error"]=skmet.coverage_error(y_tst,y_pred)
+	metrics_df.loc[0,prefix+"avg_prec_score"]=skmet.label_ranking_average_precision_score(y_tst,y_pred)
+	return metrics_df
 
 
+def log_epoch_metrics(logfilename,epoch,epoch_loss,model,x_trn,y_trn,x_val,y_val,num_neighbours,do_print=True):
+	# get embeddings
+	emb_trn=model(torch.from_numpy(x_trn.astype('float32'))).detach().numpy()
+	emb_val=model(torch.from_numpy(x_val.astype('float32'))).detach().numpy()
+	# create knn model
+	nbrs = NearestNeighbors(n_neighbors=num_neighbours, algorithm='ball_tree').fit(emb_trn)
+	# get training metrics
+	trn_metrics=compute_mlr_metrics(nbrs,num_neighbours,y_trn,emb_trn,y_trn,"trn_")
+	val_metrics=compute_mlr_metrics(nbrs,num_neighbours,y_trn,emb_val,y_val,"val_")
+	# log metrics
+	with open(logfilename,"a") as fi:
+		fi.write("Epoch : "+ str(epoch)+"\n")
+		fi.write("Epoch Loss : "+ str(epoch_loss)+"\n")
+		trn_metrics.to_csv(fi,index=False)
+		val_metrics.to_csv(fi,index=False)
+	
+	if do_print:
+		print("Epoch : "+ str(epoch)+"\n")
+		print(trn_metrics)
+		print(val_metrics)
