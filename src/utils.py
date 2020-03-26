@@ -30,38 +30,43 @@ def select_triplets(embeddings,y_batch,max_negatives_per_pos,max_trips_per_ancho
 		dists=np.sqrt(np.sum((embeddings-anchor)**2,axis=1))
 		distance_order=np.argsort(dists)
 		sim_distance_order=sim_scores[distance_order]
-		min_sim=int(np.min(sim_scores))
-		max_sim=int(np.max(sim_scores))
 		num_anchor_triplets=0
-		# choose a threshold similarity to partition the points into positives and negatives
-		# starting from the smallest similarity
-		for sim_thres in range(min_sim+1,max_sim):
-			positive_idcs=np.nonzero(sim_distance_order>=sim_thres)[0]
-			if debug:
-				print(positive_idcs)
-			# mine positives first
-			for j,pos_idx in enumerate(positive_idcs):
-				# its the anchor
-				if distance_order[pos_idx]==i:
-					continue
-				negative_idcs=np.nonzero(sim_distance_order[:pos_idx]<sim_thres)[0]
-				# no negatives ahead of this positive
-				if len(negative_idcs)==0:
-					continue
-				# get negatives (which are already in closest first order)
-				num_negatives=np.minimum(max_negatives_per_pos,negative_idcs.shape[0])
-				for _ in range(0,num_negatives):
-					# choose a negative randomly, because there are a lot of negatives
-					# and since as we go down the positive_idcs, the previous negative_idcs
-					# is included, so we don't want to keep choosing the same negatives
-					k=np.random.randint(0,len(negative_idcs))
-					neg_idx=negative_idcs[k]
-					triplets.append((i,
-									distance_order[pos_idx],
-									distance_order[neg_idx]))
-					num_anchor_triplets+=1
-					if debug:
-						print((i,distance_order[pos_idx],distance_order[neg_idx]))	
+		positive_idcs=np.nonzero(sim_distance_order>0)[0]
+		num_fine=0
+		num_coarse=0
+		# mine positives first, starting with the back
+		for j,pos_idx in enumerate(np.flip(positive_idcs)):
+			# its the anchor
+			if distance_order[pos_idx]==i:
+				continue
+			pos_sim=sim_distance_order[pos_idx]
+			# generate fine triplets
+			positive_misorderings=np.logical_and(sim_distance_order[:pos_idx]<pos_sim,sim_distance_order[:pos_idx]>0)
+			for neg_idx in np.nonzero(positive_misorderings)[0]:
+				triplets.append((i,
+								distance_order[pos_idx],
+								distance_order[neg_idx]))
+				num_anchor_triplets+=1
+				num_fine+=1
+			# generate coarse triplets
+			zero_idcs=np.nonzero(sim_distance_order[:pos_idx]==0)[0]
+			if len(zero_idcs)==0:
+				continue
+			num_negatives=np.minimum(max_negatives_per_pos,zero_idcs.shape[0])
+			for _ in range(0,num_negatives):
+				# choose a negative randomly, because there are a lot of negatives
+				# and since as we go down the positive_idcs, the previous zero_idcs
+				# is included, so we don't want to keep choosing the same negatives
+				k=np.random.randint(0,len(zero_idcs))
+				neg_idx=zero_idcs[k]
+				triplets.append((i,
+								distance_order[pos_idx],
+								distance_order[neg_idx]))
+				num_anchor_triplets+=1
+				num_coarse+=1
+				if debug:
+					print((i,distance_order[pos_idx],distance_order[neg_idx]))
+			
 			if num_anchor_triplets>=max_trips_per_anchor:
 				break
 	return triplets
