@@ -4,7 +4,7 @@ This project adapts triplet loss based metric learning to learn a metric for mul
 
 ### Project Description
 
-We want to learn a transformation that converts features to an embedding space, such that points with overlapping label sets are placed close to each other. That is, we want to learn a transformation where distance between two points is roughly  proportional to the number of labels they share. 
+We want to learn a transformation that converts features to an embedding space, such that points with overlapping label sets are placed close to each other. That is, we want to learn a transformation where distance between two points is roughly proportional to the number of labels they share. 
 
 **Task** : Multi Label Ranking/ Multi Label Classification with large number of labels.
 
@@ -12,7 +12,7 @@ We want to learn a transformation that converts features to an embedding space, 
 
 #### Network and Loss
 
-* We use a dense network with a single hidden layer as the metric function. Preliminary experiments do not show any improvements in increasing number of hidden layers. Moreover, in a directly supervised learning setting (where we try to predict ), single hidden layer networks performed the best by our experiments. In a supervised learning setting, this can be attributed to the sparsity and high dimensionality of the features - various works have shown that SVMs and other linear classifiers perform better in such domains - which allows greater linear separability. 
+* We use a dense network with a single hidden layer as the metric function. Preliminary experiments do not show any improvements in increasing number of hidden layers. Moreover, in a directly supervised learning setting (where we try to predict labels as targets), single hidden layer networks performed the best by our experiments. In a supervised learning setting, this can be attributed to the sparsity and high dimensionality of the features - various works have shown that SVMs and other linear classifiers perform better in such domains - which allows greater linear separability. 
 
 * We use the Triplet Loss to train our network. Other possible choices are Contrastive Loss and Magnet Loss, but we choose triplet loss mainly because it has had quite a bit of empirical success in the related domain of multi-class classification with large number of classes (for example person reidentification) as well as ranking images. 
 
@@ -40,8 +40,8 @@ We develop our triplet mining method in the following way
 1. We use an online strategy, mining triplets from a minibatch similar to []. This is an obvious choice due to memory constraints.
 2. We divide our training data into equally sized minibatches randomly. We could try to construct minibatches so that pairs which are highly relevant fall in the same minibatch, but this task will be increasingly complex as the number of labels increase. So we stick to the simpler method, although this potentially results in a serious flaw : the chance of a rare label occuring multiple times in a minibatch is unlikely, thus this method potentially ignores intra-class similarities for rare labels. But we roll with it.
 3. Since number of triplets vary cubically with batch size, selecting all valid triplets is generally infeasible.
-4. In the first step, we choose all points within a minibatch as anchors, and we choose all points with non-zero similarities as positives. For each anchor-positive pair, we choose ``max_negatives_per_pos`` number of negatives(0-similarity) which are closer than the positive. This is somewhat analogous to "category-level" triplets as described in [].
-5. In the second step, we choose all misorderings of all samples with positive similarity as triplets. Since we expect the number of points within a minibatch with overlap with the anchor to be low for multilabel datasets, this step is not infeasible. This step is (again, somewhat) analogous to "fine grained" triplets as described in [].
+4. In the first step, we choose all points within a minibatch as anchors, and we choose all points with non-zero similarities as positives. For each anchor-positive pair, we choose ``max_negatives_per_pos`` number of negatives(0-similarity) which are closer than the positive. This is somewhat analogous to "category-level" triplets as described [Wang 2014][1].
+5. In the second step, we choose all misorderings of all samples with positive similarity as triplets. Since we expect the number of points within a minibatch with overlap with the anchor to be low for multilabel datasets, this step is not infeasible. This step is (again, somewhat) analogous to "fine grained" triplets as described in [Wang 2014][1].
 
 ```
 for each point as anchor
@@ -52,31 +52,39 @@ for each point as anchor
 
 #### Files and Installation
 
-To run, first install the required Python 3 modules
+This project was developed in Python 3.6.9 with the following libraries with versions
 
 ```
-pip install -r requirements.txt
+numpy                             1.17.4
+scikit-learn                      0.22
+torch                             1.4.0
+torchvision                       0.5.0
+# optional (for notebooks)
+matplotlib                        3.1.2
+seaborn                           0.9.0
 ```
 
-Then, run src/train_triplets.py which contains the main training loop to train the network
+
+``src/train_triplets.py`` contains the main training loop to train the network
 
 ```
 cd src
-python train_triplets.py
+python train_triplets.py run_dir=runs/bibtex_30_3500 dataset=bibtex val_file=runs/bibtex_datadict.p emb_dim=30 disc=0 margin=0 num_epochs=160 hidden=3500 checkpoint=20 log=1 nbrs=20
 ```
 
+Only dataset, run_dir and val_file are required args.
 
-Other files 
+Notebooks 
+
+* ``src/notebooks/training_plots.viz`` : Comparision of various runs with different hyperparameter values.
+* ``src/notebooks/embed_viz.viz`` : TSNE visualization of the embeddings.
+* ``src/notebooks/evaluation_model.viz`` : Compares a simple averaging nearest-neighbour model vs a distance weighted one.
+
+Utility files 
 
 * ``src/utils.py`` : contains various helper functions, most importantly, the triplet mining method.
 * ``src/mymodels.py`` : contains class definition for a simple feedforward NN.
 * ``src/mydatasets.py`` : contains various helper functions to read and parse datasets downloaded from XCV repository into numpy arrays.
-* ``src/evaluation.ipynb`` : plots training metrics for various hyper parameters on the bibtex dataset.
-
-
-### Evaluation
-
-Graphs for experiments with various hyperparameters on bibtex dataset can be viewed in the following notebook.
 
 ### Glossary
 
@@ -113,9 +121,9 @@ L = max{(d(f(x_a),f(x_p)) + margin) - d(f(x_a),f(x_n)),0}
 
 Thus, while in the first case (also called Contrastive Loss), we choose the value of d to be 0 for like pairs, and some large number for unlike pairs, in triplet loss, we loosen the constraint somewhat and require only that like pairs are closer (by a margin) then unlike pairs. 
 
-Uses of triplet loss for classification/ranking can be found in [] and []. A crucial step in triplet loss based methods, is mining triplets. We choose an online triplet mining scheme adapted from [].
+Uses of triplet loss for classification/ranking can be found in [Wang 2014][1] and [Schroff 2015][2]. A crucial step in triplet loss based methods, is mining triplets. We choose an online triplet mining scheme adapted from [Facenet][2].
 
-* In [], triplets are chosen from a minibatch in the following way
+* In [Facenet][2], triplets are chosen from a minibatch in the following way
 
 ```
 for each point as anchor
@@ -127,12 +135,9 @@ for each point as anchor
 
 ### References
 
-The Extreme Classification Repository
-http://manikvarma.org/downloads/XC/XMLRepository.html
+* [The Extreme Classification Repository: Multi-label Datasets & Code](http://manikvarma.org/downloads/XC/XMLRepository.html)
+* [Learning Fine-grained Image Similarity with Deep Ranking][1]
+* [FaceNet: A Unified Embedding for Face Recognition and Clustering][2]
 
-FaceNet: A Unified Embedding for Face Recognition and Clustering
-https://arxiv.org/abs/1503.03832
-
-
-Learning Fine-grained Image Similarity with Deep Ranking
-https://arxiv.org/pdf/1404.4661.pdf
+[1]: https://arxiv.org/abs/1404.4661 "Learning Fine-grained Image Similarity with Deep Ranking"
+[2]: https://arxiv.org/abs/1503.03832 "FaceNet: A Unified Embedding for Face Recognition and Clustering"
