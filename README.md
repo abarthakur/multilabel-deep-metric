@@ -2,6 +2,8 @@
 
 This project adapts triplet loss based metric learning to learn a metric for multilabel points, such that samples with maximum overlap in label sets are close. Challenges were appropriately defining the mining of triplets, as there is significant overlap between classes in multilabel classification.
 
+![Image of Embeddings for Bibtex dataset generated after 40 epochs of training](/cover_bibtex_emb_30_marg_0_h_1000_ep_40.png)
+
 ### Project Description
 
 We want to learn a transformation that converts features to an embedding space, such that points with overlapping label sets are placed close to each other. That is, we want to learn a transformation where distance between two points is roughly proportional to the number of labels they share. 
@@ -76,9 +78,9 @@ Only dataset, run_dir and val_file are required args.
 
 Notebooks 
 
-* ``src/notebooks/training_plots.viz`` : Comparision of various runs with different hyperparameter values.
-* ``src/notebooks/embed_viz.viz`` : TSNE visualization of the embeddings.
-* ``src/notebooks/evaluation_model.viz`` : Compares a simple averaging nearest-neighbour model vs a distance weighted one.
+* [src/notebooks/training_plots.ipynb](/src/notebooks/training_plots.ipynb) : Comparision of various runs with different hyperparameter values.
+* [src/notebooks/embed_viz.ipynb](/src/notebooks/embed_viz.ipynb)`` : TSNE visualization of the embeddings.
+* [src/notebooks/evaluation_model.ipynb](/src/notebooks/evaluation_model.ipynb)`` : Compares a simple averaging nearest-neighbour model vs a distance weighted one.
 
 Utility files 
 
