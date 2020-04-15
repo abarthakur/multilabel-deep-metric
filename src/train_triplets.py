@@ -3,58 +3,92 @@ import mymodels
 import utils
 import numpy as np
 import torch
+import sys
+import os
+import json 
 
-# data params
-DATASET="bibtex"
-NUM_MONITOR=10
+args={
+	"resume_from":0,
+	"num_epochs":200,
+	"checkpoint":20,
+	"log":1,
+	"hidden":[1000],
+	"load_from":"",
+	"nbrs":20,
+	"emb_dim":20,
+	"margin":0,
+	"disc":0
+	}
+
+for i in range(1,len(sys.argv)):
+	string=sys.argv[i]
+	parts=string.split("=")
+	assert(len(parts)==2)
+	if parts[0]=="dataset":
+		args["dataset_name"]=parts[1]
+	elif parts[0]=="load":
+		args["load_from"]=parts[1]
+	elif parts[0]=="run_dir":
+		dir_path=parts[1]
+		if os.path.exists(dir_path):
+			assert(os.path.isdir(dir_path))
+		else:
+			os.makedirs(dir_path)
+		args["run_dir"]=parts[1]
+	elif parts[0]in ["resume_from","num_epochs","emb_dim","checkpoint","log","nbrs","disc"]:
+		args[parts[0]]=int(parts[1])
+	elif parts[0]=="hidden":
+		args["hidden"]=[int(k) for k in parts[1].split(",")]
+	elif parts[0]=="val_file":
+		args["val_file"]=parts[1]
+	elif parts[0]=="margin":
+		args["margin"]=float(parts[1])
 
 # get data
-x_mat,y_mat,x_tst,y_tst=mydatasets.get_dataset_for_exp(DATASET)
-x_trn,y_trn,x_val,y_val=mydatasets.get_validation_split(x_mat,y_mat,"./"+DATASET+"datadict.p",0.1)
+x_mat,y_mat,x_tst,y_tst=mydatasets.get_dataset_for_exp(args["dataset_name"])
+x_trn,y_trn,x_val,y_val=mydatasets.get_validation_split(x_mat,y_mat,args["val_file"],0.1)
 num_labels=y_mat.shape[1]
 num_dims=x_mat.shape[1]
-spc_idcs=np.random.permutation(x_trn.shape[0])[:NUM_MONITOR]
-x_special=x_trn[spc_idcs,:]
-y_special=y_trn[spc_idcs,:]
 
 # model params
-run_name="results/bibtex_test"
-embedding_dim=30
-model_layers=[num_dims,1000,embedding_dim]
-load_model_from=""
+embedding_dim=args["emb_dim"]
+model_layers=[num_dims]+args["hidden"]+[embedding_dim]
+load_model_from=args["load_from"]
 
 # training hyper params
-resume_from=0
-num_epochs=200
-checkpoint_every=50
-log_every=1
+resume_from=args["resume_from"]
+num_epochs=args["num_epochs"]
+checkpoint_every=args["checkpoint"]
+log_every=args["log"]
 batch_sizes=[(0,500)]
 max_triplets_per_anchor=[(0,100),(50,75),(200,200)]
 max_negatives_per_positive=[(0,3),(10,6),(30,12)]
-trips_margin=[(0,0)]
+trips_margin=[(0,args["margin"])]
 lrates=[(0,0.01),(100,0.001)]
 # testing hyper params
-num_neighbours=20
+num_neighbours=args["nbrs"]
 #log file
 
-logfilename=run_name+"_log.txt"
+logfilename=args["run_dir"]+"/log.txt"
 
 def log_experiment_parameters():
 	with open(logfilename,"a") as fi:
-		fi.write(
-		"model_layers : " + str(model_layers) +"\n"+
-		"embedding_dim : " + str(embedding_dim) +"\n"+
-		"load_model_from : " + str(load_model_from) +"\n"+
-		"resume_from : " + str(resume_from) +"\n"+
-		"num_epochs : " + str(num_epochs) +"\n"+
-		"checkpoint_every : " + str(checkpoint_every) +"\n"+
-		"batch_sizes : " + str(batch_sizes) +"\n"+
-		"max_triplets_per_anchor : " + str(max_triplets_per_anchor) +"\n"+
-		"max_negatives_per_positive : " + str(max_negatives_per_positive) +"\n"+
-		"trips_margin : " + str(trips_margin) +"\n"+
-		"lrates : " + str(lrates) +"\n"+
-		"num_neighbours : " + str(num_neighbours) +"\n"
-		)
+		fi.write(json.dumps({
+		"model_layers":model_layers,
+		"embedding_dim":embedding_dim,
+		"load_model_from":load_model_from,
+		"resume_from":resume_from,
+		"num_epochs":num_epochs,
+		"checkpoint_every":checkpoint_every,
+		"batch_sizes":batch_sizes,
+		"max_triplets_per_anchor":max_triplets_per_anchor,
+		"max_negatives_per_positive":max_negatives_per_positive,
+		"trips_margin":trips_margin,
+		"lrates":lrates,
+		"num_neighbours":num_neighbours,
+		"disc":args["disc"]
+		}))
+		fi.write("\n######\n")
 
 # get model
 if load_model_from:
@@ -98,8 +132,8 @@ for epoch in range(resume_from,num_epochs):
 		print("Batch size :",anch.shape[0],", Loss value :",loss_batch.detach().numpy())
 	loss_mean=np.mean(np.array(loss_values))
 	print("Loss for this epoch :",loss_mean)
-	if epoch%log_every==0:
+	if (epoch+1)%log_every==0:
 		utils.log_epoch_metrics(logfilename,epoch,loss_mean,model,x_trn,y_trn,x_val,y_val,num_neighbours)
 	# evaluate model
-	if epoch%checkpoint_every==0:
-		torch.save(model,run_name+"_"+str(epoch))
+	if (epoch+1)%checkpoint_every==0:
+		torch.save(model,args["run_dir"]+"/model_"+str(epoch+1))

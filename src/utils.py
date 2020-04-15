@@ -132,12 +132,16 @@ def log_epoch_metrics(logfilename,epoch,epoch_loss,model,x_trn,y_trn,x_val,y_val
 	# create knn model
 	nbrs = NearestNeighbors(n_neighbors=num_neighbours, algorithm='ball_tree').fit(emb_trn)
 	# get training metrics
-	trn_metrics=compute_mlr_metrics(nbrs,num_neighbours,y_trn,emb_trn,y_trn,"trn_")
-	val_metrics=compute_mlr_metrics(nbrs,num_neighbours,y_trn,emb_val,y_val,"val_")
+	trn_metrics=compute_mlr_metrics(nbrs,num_neighbours,y_trn,emb_trn,y_trn,"")
+	trn_metrics.loc[0,"loss"]=epoch_loss
+	trn_metrics.loc[0,"epoch"]=epoch
+	trn_metrics.loc[0,"trn/val"]="trn"
+	val_metrics=compute_mlr_metrics(nbrs,num_neighbours,y_trn,emb_val,y_val,"")
+	val_metrics.loc[0,"loss"]=0
+	val_metrics.loc[0,"epoch"]=epoch
+	val_metrics.loc[0,"trn/val"]="val"
 	# log metrics
 	with open(logfilename,"a") as fi:
-		fi.write("Epoch : "+ str(epoch)+"\n")
-		fi.write("Epoch Loss : "+ str(epoch_loss)+"\n")
 		trn_metrics.to_csv(fi,index=False)
 		val_metrics.to_csv(fi,index=False)
 	
