@@ -50,6 +50,17 @@ x_trn,y_trn,x_val,y_val=mydatasets.get_validation_split(x_mat,y_mat,args["val_fi
 num_labels=y_mat.shape[1]
 num_dims=x_mat.shape[1]
 
+factors=None
+if args["disc"]==1:
+	lcounts=np.sum(y_trn,axis=0)
+	ranks=np.argsort(np.argsort(lcounts))+1
+	factors=1/(np.log(ranks+1))
+elif args["disc"]==2:
+	lcounts=np.sum(y_trn,axis=0)
+	factors=1/(np.log(lcounts+2))
+else:
+	factors=np.zeros(num_labels)+1.0
+print(factors)
 # model params
 embedding_dim=args["emb_dim"]
 model_layers=[num_dims]+args["hidden"]+[embedding_dim]
@@ -118,7 +129,7 @@ for epoch in range(resume_from,num_epochs):
 		# generate embeddings
 		embeddings=model(torch.from_numpy(x_batch.astype('float32')))
 		# generate triplets (online)
-		trips=utils.get_triplets(embeddings,y_batch,max_neg,max_trips,debug=False)
+		trips=utils.get_triplets(embeddings,y_batch,max_neg,max_trips,factors,debug=False)
 		if trips is None:
 			continue
 		anch,pos,neg=trips

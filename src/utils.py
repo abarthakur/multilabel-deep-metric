@@ -19,13 +19,13 @@ def make_batches(x_mat,y_mat,batch_size,shuffle=True):
 	return train_dataset
 
 
-def select_triplets(embeddings,y_batch,max_negatives_per_pos,max_trips_per_anchor,debug=False):
+def select_triplets(embeddings,y_batch,max_negatives_per_pos,max_trips_per_anchor,factors,debug=False):
 	triplets=[]
 	for i in range(0,embeddings.shape[0]):
 		anchor=embeddings[i,:]
 		anchor_y=y_batch[i,:]
 		# get similarity scores
-		sim_scores=np.sum(y_batch * anchor_y,axis=1)
+		sim_scores=np.sum(y_batch * (anchor_y*factors),axis=1)
 		# get embedding distances
 		dists=np.sqrt(np.sum((embeddings-anchor)**2,axis=1))
 		distance_order=np.argsort(dists)
@@ -72,8 +72,8 @@ def select_triplets(embeddings,y_batch,max_negatives_per_pos,max_trips_per_ancho
 	return triplets
 
 
-def get_triplets(embeddings,y_batch,max_negatives_per_pos,max_trips_per_anchor,debug=False):
-	trips_list=select_triplets(embeddings.detach().numpy(),y_batch,max_negatives_per_pos,max_trips_per_anchor,debug)
+def get_triplets(embeddings,y_batch,max_negatives_per_pos,max_trips_per_anchor,factors,debug=False):
+	trips_list=select_triplets(embeddings.detach().numpy(),y_batch,max_negatives_per_pos,max_trips_per_anchor,factors,debug)
 	if len(trips_list)==0:
 		return None
 	anchors=[]
