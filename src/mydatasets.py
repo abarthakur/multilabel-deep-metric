@@ -168,11 +168,6 @@ def get_dataset_for_exp(DATASET,SPLIT=0,remove_unlabelled=True):
 		x_mat,y_mat,x_tst,y_tst=get_arrays(trn_data,tst_data)
 	elif DATASET in ["enron","yeast"]:
 		x_mat,y_mat,x_tst,y_tst=get_mulan_arrays(DATASET)
-	# reorder
-	reorder=np.argsort(np.sum(y_mat,axis=0))
-	y_mat=y_mat[:,reorder] *1.0
-	y_tst=y_tst[:,reorder] *1.0
-
 	# remove nz samples
 	nz_samples=np.sum(y_mat,axis=1)!=0
 	x_mat_new=x_mat[nz_samples,:]
