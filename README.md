@@ -6,7 +6,7 @@ This project adapts triplet loss based metric learning to learn a metric for mul
 
 ### Project Description
 
-We want to learn a transformation that converts features to an embedding space, such that points with overlapping label sets are placed close to each other. That is, we want to learn a transformation where distance between two points is roughly proportional to the number of labels they share. 
+We want to learn a transformation that converts features to an embedding space, such that points with overlapping label sets are placed close to each other. That is, we want to learn a transformation where distance between two points is inversely proportional to the number of labels they share. 
 
 **Task** : Multi Label Ranking/ Multi Label Classification with large number of labels.
 
